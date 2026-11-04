@@ -25,9 +25,9 @@ The app runs on port 5173 and the API on port 4000. Keep this command running wh
 ## What each phase added
 | Phase | Where |
 |---|---|
-| 1-2 Design system, layout, routing, dashboard | `src/components/ui.tsx`, `AppLayout.tsx`, `src/pages/Dashboard.tsx` |
-| 3 Templates and form editor | `src/pages/CreateForm.tsx`, `Editor.tsx`, `EditorPanels.tsx`, `src/services/templates.ts`, `fieldTypes.ts` |
-| Backend and API connection, auth | `server/`, `src/services/api.ts`, `src/store/index.ts`, `src/pages/Auth.tsx` |
-| 4 Preview, share, public form | `Preview.tsx`, `Share.tsx`, `PublicForm.tsx`, `src/components/FormRenderer.tsx` |
-| 5 Responses and analytics | `Responses.tsx`, `Analytics.tsx`, `src/services/responses.ts` |
-| 6 Landing page and settings | `Landing.tsx`, `Settings.tsx`, `src/services/theme.ts`, `server/src/routes/settings.js` |
+| 1-2 Design system, layout, routing, dashboard | `src/components/ui.jsx`, `AppLayout.jsx`, `src/pages/Dashboard.jsx` |
+| 3 Templates and form editor | `src/pages/CreateForm.jsx`, `Editor.jsx`, `EditorPanels.jsx`, `src/services/templates.js`, `fieldTypes.js` |
+| Backend and API connection, auth | `server/`, `src/services/api.js`, `src/store/index.js`, `src/pages/Auth.jsx` |
+| 4 Preview, share, public form | `Preview.jsx`, `Share.jsx`, `PublicForm.jsx`, `src/components/FormRenderer.jsx` |
+| 5 Responses and analytics | `Responses.jsx`, `Analytics.jsx`, `src/services/responses.js` |
+| 6 Landing page and settings | `Landing.jsx`, `Settings.jsx`, `src/services/theme.js`, `server/src/routes/settings.js` |
