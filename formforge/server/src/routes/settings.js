@@ -1,16 +1,16 @@
-import { Router, type Response } from 'express'
-import bcrypt from 'bcryptjs'
-import { z } from 'zod'
-import { User, Form, FormResponse, publicUser } from '../models'
-import { requireAuth } from '../middleware'
+const { Router } = require('express')
+const bcrypt = require('bcryptjs')
+const { z } = require('zod')
+const { User, Form, FormResponse, publicUser } = require('../models')
+const { requireAuth } = require('../middleware')
 
 const r = Router()
 r.use(requireAuth)
 
-const current = (res: Response) => User.findById(res.locals.userId)
+const current = res => User.findById(res.locals.userId)
 const pw = z.string().min(1).max(128)
 // Wrong-password answers use 403, not 401, so the client doesn't treat them as an expired session.
-const wrongPassword = (res: Response) => { res.status(403).json({ error: 'Current password is incorrect' }) }
+const wrongPassword = res => { res.status(403).json({ error: 'Current password is incorrect' }) }
 
 r.patch('/', async (req, res) => {
   const b = z.object({
@@ -63,4 +63,4 @@ r.delete('/account', async (req, res) => {
   res.status(204).end()
 })
 
-export default r
+module.exports = r

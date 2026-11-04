@@ -1,28 +1,27 @@
-import { z } from 'zod'
+const { z } = require('zod')
 
-export const TYPES = ['short_text', 'long_text', 'email', 'number', 'phone', 'dropdown', 'multiple_choice', 'checkbox', 'date', 'rating', 'file'] as const
-export const fieldSchema = z.object({
+const TYPES = ['short_text', 'long_text', 'email', 'number', 'phone', 'dropdown', 'multiple_choice', 'checkbox', 'date', 'rating', 'file']
+const fieldSchema = z.object({
   id: z.string().min(1).max(40), type: z.enum(TYPES), label: z.string().max(300),
   description: z.string().max(1000).optional(), placeholder: z.string().max(300).optional(), required: z.boolean(),
   options: z.array(z.string().max(200)).max(100).optional(), min: z.number().optional(), max: z.number().optional(),
 })
-export const formBody = z.object({
+const formBody = z.object({
   title: z.string().trim().min(1).max(200), description: z.string().max(2000).optional(),
   fields: z.array(fieldSchema).max(100), accent: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   submissionLimit: z.number().int().positive().nullable().optional(), expiresAt: z.string().datetime().nullable().optional(),
 })
-export type FieldDef = z.infer<typeof fieldSchema>
 
 // Server-side re-validation of a submission against the form's field config. Never trust the client.
-export function checkAnswers(fields: FieldDef[], raw: Record<string, unknown>) {
-  const errors: Record<string, string> = {}
-  const clean: Record<string, string | number | string[]> = {}
+function checkAnswers(fields, raw) {
+  const errors = {}
+  const clean = {}
   for (const f of fields) {
     const v = raw[f.id]
     const empty = v === undefined || v === null || v === '' || v === false || (Array.isArray(v) && v.length === 0)
     if (empty) { if (f.required) errors[f.id] = 'This field is required'; continue }
     const s = String(v).trim()
-    const bad = (m: string) => { errors[f.id] = m }
+    const bad = m => { errors[f.id] = m }
     switch (f.type) {
       case 'short_text': case 'long_text':
         if (s.length > 5000) bad('Too long')
@@ -52,3 +51,5 @@ export function checkAnswers(fields: FieldDef[], raw: Record<string, unknown>) {
   }
   return { errors, clean }
 }
+
+module.exports = { TYPES, fieldSchema, formBody, checkAnswers }

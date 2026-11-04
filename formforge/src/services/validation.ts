@@ -1,7 +1,7 @@
 import type { Field } from '../types'
 import type { Answer } from '../components/FieldInput'
 
-// Client-side mirror of the server's rules (server/src/validate.ts). The server remains the source of truth.
+// Client-side mirror of the server's rules (server/src/validate.js). The server remains the source of truth.
 export function validateField(f: Field, v: Answer | undefined): string | null {
   const empty = v === undefined || v === '' || v === false || (Array.isArray(v) && v.length === 0)
   if (empty) return f.required ? 'This field is required' : null

@@ -1,14 +1,14 @@
-import 'dotenv/config'
-import express from 'express'
-import cors from 'cors'
-import helmet from 'helmet'
-import mongoose from 'mongoose'
-import rateLimit from 'express-rate-limit'
-import auth from './routes/auth'
-import forms from './routes/forms'
-import pub from './routes/public'
-import settings from './routes/settings'
-import { errorHandler } from './middleware'
+require('dotenv/config')
+const express = require('express')
+const cors = require('cors')
+const helmet = require('helmet')
+const mongoose = require('mongoose')
+const rateLimit = require('express-rate-limit')
+const auth = require('./routes/auth')
+const forms = require('./routes/forms')
+const pub = require('./routes/public')
+const settings = require('./routes/settings')
+const { errorHandler } = require('./middleware')
 
 const { MONGODB_URI, JWT_SECRET, PORT = '4000', CLIENT_ORIGIN = 'http://localhost:5173' } = process.env
 if (!MONGODB_URI || !JWT_SECRET || JWT_SECRET.length < 32) { console.error('Set MONGODB_URI and a JWT_SECRET of 32+ characters (see .env.example).'); process.exit(1) }

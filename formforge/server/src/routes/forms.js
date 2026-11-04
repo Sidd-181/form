@@ -1,23 +1,23 @@
-import { Router, type Request, type Response } from 'express'
-import mongoose from 'mongoose'
-import { z } from 'zod'
-import { Form, FormResponse } from '../models'
-import { requireAuth } from '../middleware'
-import { formBody } from '../validate'
+const { Router } = require('express')
+const mongoose = require('mongoose')
+const { z } = require('zod')
+const { Form, FormResponse } = require('../models')
+const { requireAuth } = require('../middleware')
+const { formBody } = require('../validate')
 
 const r = Router()
 r.use(requireAuth)
 
-const own = (req: Request, res: Response) => {
+const own = (req, res) => {
   const id = String(req.params.id)
   return mongoose.isValidObjectId(id) ? Form.findOne({ _id: id, owner: res.locals.userId }) : null
 }
-const notFound = (res: Response) => { res.status(404).json({ error: 'Form not found' }) }
+const notFound = res => { res.status(404).json({ error: 'Form not found' }) }
 
 r.get('/', async (_req, res) => {
   const forms = await Form.find({ owner: res.locals.userId }).sort({ updatedAt: -1 })
   const counts = await FormResponse.aggregate([{ $match: { form: { $in: forms.map(f => f._id) } } }, { $group: { _id: '$form', n: { $sum: 1 } } }])
-  const byId = new Map(counts.map(c => [String(c._id), c.n as number]))
+  const byId = new Map(counts.map(c => [String(c._id), c.n]))
   res.json(forms.map(f => ({ ...f.toJSON(), responseCount: byId.get(String(f._id)) ?? 0 })))
 })
 
@@ -92,4 +92,4 @@ r.delete('/:id/responses/:rid', async (req, res) => {
   deletedCount ? res.status(204).end() : res.status(404).json({ error: 'Response not found' })
 })
 
-export default r
+module.exports = r

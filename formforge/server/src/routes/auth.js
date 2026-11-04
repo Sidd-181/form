@@ -1,12 +1,12 @@
-import { Router } from 'express'
-import bcrypt from 'bcryptjs'
-import { z } from 'zod'
-import { User, publicUser } from '../models'
-import { requireAuth, signToken } from '../middleware'
+const { Router } = require('express')
+const bcrypt = require('bcryptjs')
+const { z } = require('zod')
+const { User, publicUser } = require('../models')
+const { requireAuth, signToken } = require('../middleware')
 
 const r = Router()
 const creds = z.object({ email: z.string().email().max(254), password: z.string().min(8).max(128) })
-const session = (u: InstanceType<typeof User>) => ({ token: signToken(String(u._id)), user: publicUser(u) })
+const session = u => ({ token: signToken(String(u._id)), user: publicUser(u) })
 
 r.post('/signup', async (req, res) => {
   const b = creds.extend({ name: z.string().trim().min(1).max(100) }).parse(req.body)
@@ -28,4 +28,4 @@ r.get('/me', requireAuth, async (_req, res) => {
   res.json(publicUser(user))
 })
 
-export default r
+module.exports = r

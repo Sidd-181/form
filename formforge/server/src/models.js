@@ -1,9 +1,10 @@
-import mongoose, { Schema } from 'mongoose'
+const mongoose = require('mongoose')
+const { Schema } = mongoose
 
 // Expose `id`, hide internals when sending JSON to the client.
 const toJSON = {
   versionKey: false,
-  transform: (_doc: unknown, ret: Record<string, any>) => {
+  transform: (_doc, ret) => {
     ret.id = String(ret._id)
     if (ret.createdAt && ret.form) ret.submittedAt = ret.createdAt
     delete ret._id; delete ret.passwordHash; delete ret.owner
@@ -47,9 +48,9 @@ const FormResponse = mongoose.model('Response', new Schema({
   completionSeconds: { type: Number, default: null },
 }, { timestamps: { createdAt: true, updatedAt: false }, toJSON }))
 
-const publicUser = (u: InstanceType<typeof User>) => ({
+const publicUser = u => ({
   id: String(u._id), name: u.name, email: u.email, workspaceName: u.workspaceName ?? '', defaultAccent: u.defaultAccent ?? '#4f46e5',
   notifications: { newResponse: u.notifications?.newResponse ?? true, weeklyDigest: u.notifications?.weeklyDigest ?? false },
 })
 
-export { User, Form, FormResponse, publicUser }
+module.exports = { User, Form, FormResponse, publicUser }
