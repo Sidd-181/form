@@ -1,5 +1,5 @@
 import { Type, AlignLeft, Mail, Hash, Phone, ChevronsUpDown, CircleDot, CheckSquare, Calendar, Star, Upload } from 'lucide-react';
-import { uid } from './uid';
+import { uid } from './uid.js';
 export const FIELD_TYPES = [
     { type: 'short_text', label: 'Short text', icon: Type, group: 'Text' },
     { type: 'long_text', label: 'Long text', icon: AlignLeft, group: 'Text' },

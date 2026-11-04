@@ -5,6 +5,7 @@ import { GripVertical, Copy, Trash2, Plus, X, Search } from 'lucide-react';
 import { FIELD_TYPES, hasOptions, hasPlaceholder } from '../services/fieldTypes';
 import FieldInput from '../components/FieldInput';
 import { Button, Input, Toggle, cn } from '../components/ui';
+import { validateFieldDefinition } from '../services/validation';
 export function Library({ onAdd }) {
     const [q, setQ] = useState('');
     const items = FIELD_TYPES.filter(f => f.label.toLowerCase().includes(q.toLowerCase()));
@@ -68,6 +69,24 @@ const num = (v) => (v === '' ? undefined : Number(v));
 export function Properties({ form, field, onUpdate, onMeta }) {
     const [tab, setTab] = useState('field');
     const opts = field?.options ?? [];
+    const fieldValidationError = field ? validateFieldDefinition(field) : null;
+    const addOption = () => {
+        let number = opts.length + 1;
+        while (opts.some(option => option.trim().toLocaleLowerCase() === `option ${number}`.toLocaleLowerCase())) number += 1;
+        onUpdate({ options: [...opts, `Option ${number}`] });
+    };
+    const setBound = (bound, raw) => {
+        const value = num(raw);
+        if (value == null) {
+            onUpdate({ [bound]: undefined });
+        } else if (bound === 'min' && field.max != null && value > field.max) {
+            onUpdate({ min: value, max: value });
+        } else if (bound === 'max' && field.min != null && value < field.min) {
+            onUpdate({ min: value, max: value });
+        } else {
+            onUpdate({ [bound]: value });
+        }
+    };
     return (<div>
       <div className="mb-4 flex rounded-lg bg-neutral-100 p-0.5 text-sm" role="tablist">
         {['field', 'theme'].map(t => (<button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)} className={cn('flex-1 rounded-md py-1.5 font-medium capitalize', tab === t ? 'bg-white shadow-sm' : 'text-neutral-500')}>{t === 'field' ? 'Field' : 'Theme'}</button>))}
@@ -89,15 +108,16 @@ export function Properties({ form, field, onUpdate, onMeta }) {
                   <Input aria-label={`Option ${i + 1}`} value={o} onChange={e => onUpdate({ options: opts.map((x, j) => (j === i ? e.target.value : x)) })}/>
                   <button aria-label={`Remove option ${i + 1}`} disabled={opts.length <= 1} onClick={() => onUpdate({ options: opts.filter((_, j) => j !== i) })} className="grid h-10 w-10 shrink-0 place-items-center rounded-lg text-neutral-500 hover:bg-neutral-100 disabled:opacity-40"><X size={16}/></button>
                 </div>))}
-              <Button size="sm" variant="secondary" onClick={() => onUpdate({ options: [...opts, `Option ${opts.length + 1}`] })}><Plus size={14}/>Add option</Button>
+              <Button size="sm" variant="secondary" onClick={addOption} disabled={opts.length >= 100}><Plus size={14}/>Add option</Button>
             </div>)}
           {['short_text', 'long_text', 'number', 'rating', 'file'].includes(field.type) && (<div className="space-y-3 border-t border-line pt-4">
               <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">Validation</p>
               {field.type === 'rating' ? (<Row label="Number of stars (3–10)"><Input type="number" min={3} max={10} value={field.max ?? 5} onChange={e => onUpdate({ max: Math.min(10, Math.max(3, Number(e.target.value) || 5)) })}/></Row>) : field.type === 'file' ? (<Row label="Max file size (MB)"><Input type="number" min={1} value={field.max ?? ''} onChange={e => onUpdate({ max: num(e.target.value) })} placeholder="No limit"/></Row>) : (<div className="grid grid-cols-2 gap-3">
-                  <Row label={field.type === 'number' ? 'Min value' : 'Min length'}><Input type="number" value={field.min ?? ''} onChange={e => onUpdate({ min: num(e.target.value) })}/></Row>
-                  <Row label={field.type === 'number' ? 'Max value' : 'Max length'}><Input type="number" value={field.max ?? ''} onChange={e => onUpdate({ max: num(e.target.value) })}/></Row>
+                  <Row label={field.type === 'number' ? 'Min value' : 'Min length'}><Input type="number" value={field.min ?? ''} onChange={e => setBound('min', e.target.value)}/></Row>
+                  <Row label={field.type === 'number' ? 'Max value' : 'Max length'}><Input type="number" value={field.max ?? ''} onChange={e => setBound('max', e.target.value)}/></Row>
                 </div>)}
             </div>)}
+          {fieldValidationError && <p role="alert" className="text-xs text-red-600">{fieldValidationError}</p>}
         </div>)}
     </div>);
 }

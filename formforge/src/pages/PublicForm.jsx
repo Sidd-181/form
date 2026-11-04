@@ -28,7 +28,7 @@ export default function PublicForm() {
                     return e.body.errors;
                 if (e.status === 403 || e.status === 410) {
                     setView({ k: 'closed', title: (view.k === 'ready' ? view.form.title : undefined), message: e.message });
-                    return;
+                    throw e;
                 }
             }
             throw e;
@@ -37,7 +37,7 @@ export default function PublicForm() {
     return (<div className="min-h-screen bg-canvas px-4 py-10">
       <div className="mx-auto max-w-xl">
         {view.k === 'loading' && <div className="grid min-h-[40vh] place-items-center text-neutral-500"><Loader2 className="animate-spin" aria-label="Loading form"/></div>}
-        {view.k === 'ready' && <FormRenderer form={view.form} onSubmit={submit}/>}
+        {view.k === 'ready' && <FormRenderer form={view.form} onSubmit={submit} onFileUpload={(fieldId, file) => api.uploadFile(formId, fieldId, file)}/>}
         {view.k === 'closed' && (<div className="rounded-2xl border border-line bg-white p-8 text-center" role="status">
             <Lock className="mx-auto text-neutral-400"/>
             {view.title && <h1 className="mt-3 text-xl font-semibold">{view.title}</h1>}

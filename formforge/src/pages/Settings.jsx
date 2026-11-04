@@ -101,14 +101,9 @@ function FormDefaults({ user }) {
       <div className="flex items-center gap-3"><Button disabled={a.busy || accent === user.defaultAccent} onClick={() => a.run(() => dispatch(saveProfile({ defaultAccent: accent })).unwrap(), 'Default saved.')}>Save</Button><Status msg={a.msg}/></div>
     </Section>);
 }
-function Notifications({ user }) {
-    const dispatch = useAppDispatch();
-    const [n, setN] = useState(user.notifications);
-    const a = useAction();
-    const changed = n.newResponse !== user.notifications.newResponse || n.weeklyDigest !== user.notifications.weeklyDigest;
-    return (<Section title="Notification preferences" desc="Your choices are saved to your account. Emails are not sent yet because no email service is connected to the server.">
-      {[['newResponse', 'New response alerts', 'Get an email whenever someone submits one of your forms.'], ['weeklyDigest', 'Weekly digest', 'A summary of responses across your forms every Monday.']].map(([k, t, d]) => (<div key={k} className="flex items-center justify-between gap-4"><div><p className="text-sm font-medium">{t}</p><p className="text-xs text-neutral-500">{d}</p></div><Toggle label={t} checked={n[k]} onChange={v => setN(s => ({ ...s, [k]: v }))}/></div>))}
-      <div className="flex items-center gap-3"><Button disabled={a.busy || !changed} onClick={() => a.run(() => dispatch(saveProfile({ notifications: n })).unwrap(), 'Preferences saved.')}>Save</Button><Status msg={a.msg}/></div>
+function Notifications() {
+    return (<Section title="Notification preferences" desc="Email notifications are not supported yet. No new-response alerts or weekly digests are sent.">
+      {[['New response alerts', 'Email alerts after a response is submitted.'], ['Weekly digest', 'A weekly summary of responses across your forms.']].map(([title, description]) => (<div key={title} className="flex items-center justify-between gap-4"><div><p className="text-sm font-medium">{title}</p><p className="text-xs text-neutral-500">{description}</p></div><span className="rounded-full bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-500">Not supported yet</span></div>))}
     </Section>);
 }
 function Appearance() {
@@ -137,7 +132,7 @@ export default function Settings() {
           {tab === 'account' && <Account />}
           {tab === 'workspace' && <Workspace user={user}/>}
           {tab === 'forms' && <FormDefaults user={user}/>}
-          {tab === 'notifications' && <Notifications user={user}/>}
+          {tab === 'notifications' && <Notifications />}
           {tab === 'appearance' && <Appearance />}
         </div>
       </div>

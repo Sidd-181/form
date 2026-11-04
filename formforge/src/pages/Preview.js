@@ -1,0 +1,12 @@
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft, Monitor, Smartphone, Pencil } from 'lucide-react';
+import WithForm from '../components/WithForm.js';
+import FormRenderer from '../components/FormRenderer.js';
+import { Badge, Button, cn } from '../components/ui.js';
+function PreviewView({ form }) {
+    const [device, setDevice] = useState('desktop');
+    return (_jsxs("div", { className: "space-y-6", children: [_jsxs("div", { className: "flex flex-wrap items-center justify-between gap-3", children: [_jsxs("div", { className: "flex items-center gap-3", children: [_jsx(Link, { to: "/app", "aria-label": "Back to dashboard", className: "grid h-9 w-9 place-items-center rounded-lg hover:bg-neutral-100", children: _jsx(ArrowLeft, { size: 18 }) }), _jsx("h1", { className: "text-xl font-semibold tracking-tight", children: "Preview" }), _jsx(Badge, { tone: form.status === 'published' ? 'green' : 'neutral', children: form.status === 'published' ? 'Published' : 'Draft' })] }), _jsxs("div", { className: "flex items-center gap-2", children: [_jsx("div", { className: "flex rounded-lg border border-line bg-white p-0.5", role: "group", "aria-label": "Device", children: [['desktop', Monitor], ['mobile', Smartphone]].map(([d, Icon]) => (_jsxs("button", { "aria-pressed": device === d, onClick: () => setDevice(d), className: cn('flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm capitalize', device === d ? 'bg-ink text-white' : 'text-neutral-600'), children: [_jsx(Icon, { size: 14 }), d] }, d))) }), _jsx(Link, { to: `/app/forms/${form.id}/edit`, children: _jsxs(Button, { variant: "secondary", size: "sm", children: [_jsx(Pencil, { size: 14 }), "Edit"] }) }), _jsx(Link, { to: `/app/forms/${form.id}/share`, children: _jsx(Button, { size: "sm", children: "Publish & share" }) })] })] }), _jsx("div", { className: "dot-grid rounded-xl border border-line p-4 sm:p-8", children: _jsx("div", { className: cn('mx-auto transition-all', device === 'mobile' ? 'max-w-[390px] rounded-[2rem] border-[10px] border-ink bg-canvas p-3' : 'max-w-2xl'), children: _jsx(FormRenderer, { form: form, notice: "Preview mode: responses are validated but not saved.", onSubmit: async () => { } }) }) })] }));
+}
+export default function Preview() { return _jsx(WithForm, { children: f => _jsx(PreviewView, { form: f }) }); }

@@ -1,13 +1,15 @@
-import { useEffect, useReducer, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useReducer, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { ArrowLeft, Undo2, Redo2, Eye, Check, Loader2 } from 'lucide-react';
 import { useAppDispatch, useAppSelector, updateContent, setStatus, fetchForm } from '../store';
 import { newField } from '../services/fieldTypes';
+import { createLatestSaveQueue } from '../services/saveQueue';
+import { validateFormContent } from '../services/validation';
 import { uid } from '../services/uid';
 import { Button, Dialog, cn } from '../components/ui';
-import { Library, Canvas, Properties } from './EditorPanels';
+import { Library, Canvas, Properties } from './EditorPanels.jsx';
 function reducer(h, a) {
     if (a.t === 'set')
         return { past: [...h.past.slice(-49), h.present], present: a.f, future: [] };
@@ -40,11 +42,42 @@ function EditorInner({ initial }) {
     const [confirm, setConfirm] = useState(false);
     const [saved, setSaved] = useState(true);
     const lastSaved = useRef(initial);
+    const latestForm = useRef(initial);
     const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
     const [saveError, setSaveError] = useState(null);
     const [publishError, setPublishError] = useState(null);
-    const save = (f) => dispatch(updateContent({ id: f.id, title: f.title, description: f.description, fields: f.fields, accent: f.accent })).unwrap().then(r => { lastSaved.current = f; return r; });
-    const flush = () => save(form).then(() => { setSaved(true); setSaveError(null); }).catch((e) => setSaveError(e.message ?? 'Save failed'));
+    const saveQueue = useRef(null);
+    if (!saveQueue.current) {
+        saveQueue.current = createLatestSaveQueue(async f => {
+            const invalid = validateFormContent(f);
+            if (invalid) throw new Error(invalid);
+            await dispatch(updateContent({ id: f.id, title: f.title, description: f.description, fields: f.fields, accent: f.accent })).unwrap();
+            lastSaved.current = f;
+        });
+    }
+    const queue = saveQueue.current;
+    useLayoutEffect(() => {
+        if (form !== latestForm.current) {
+            latestForm.current = form;
+            queue.setLatest(form);
+        }
+    }, [form, queue]);
+    const flush = (snapshot = form) => {
+        if (snapshot !== latestForm.current) {
+            latestForm.current = snapshot;
+            queue.setLatest(snapshot);
+        }
+        setSaved(false);
+        return queue.flush().then(() => {
+            if (queue.isSaved()) {
+                setSaved(true);
+                setSaveError(null);
+            }
+        }).catch(e => {
+            setSaveError(e.message ?? 'Save failed');
+            throw e;
+        });
+    };
     // Debounced autosave whenever the working copy changes.
     useEffect(() => {
         if (form === lastSaved.current)
@@ -72,12 +105,20 @@ function EditorInner({ initial }) {
     const publish = async () => {
         setPublishError(null);
         try {
-            await save(form);
+            await flush(form);
             await dispatch(setStatus({ id: form.id, status: 'published' })).unwrap();
             navigate(`/app/forms/${form.id}/share`);
         }
         catch (e) {
             setPublishError(e.message ?? 'Could not publish');
+        }
+    };
+    const preview = async () => {
+        try {
+            await flush(form);
+            navigate(`/app/forms/${form.id}/preview`);
+        } catch (error) {
+            setSaveError(error.message ?? 'Save failed');
         }
     };
     const selected = form.fields.find(f => f.id === selectedId);
@@ -92,7 +133,7 @@ function EditorInner({ initial }) {
           <span className="mr-1 hidden items-center gap-1 text-xs text-neutral-500 md:flex" aria-live="polite">{saveError ? <button onClick={() => void flush()} className="text-red-600 underline">Save failed, retry</button> : saved ? <><Check size={14}/>All changes saved</> : <><Loader2 size={14} className="animate-spin"/>Saving…</>}</span>
           <button aria-label="Undo" title="Undo" disabled={!h.past.length} onClick={() => hd({ t: 'undo' })} className={iconBtn}><Undo2 size={16}/></button>
           <button aria-label="Redo" title="Redo" disabled={!h.future.length} onClick={() => hd({ t: 'redo' })} className={iconBtn}><Redo2 size={16}/></button>
-          <Link to={`/app/forms/${form.id}/preview`} onClick={() => void flush()}><Button variant="secondary" size="sm"><Eye size={14}/>Preview</Button></Link>
+          <Button variant="secondary" size="sm" onClick={preview}><Eye size={14}/>Preview</Button>
           {status === 'published' ? <Link to={`/app/forms/${form.id}/share`}><Button size="sm">Share</Button></Link> : <Button size="sm" onClick={() => setConfirm(true)}>Publish</Button>}
         </div>
       </header>

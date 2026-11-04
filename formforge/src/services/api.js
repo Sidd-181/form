@@ -52,6 +52,8 @@ async function req(path, o = {}) {
 export const api = {
     signup: (b) => req('/auth/signup', { method: 'POST', body: b, quiet: true }),
     login: (b) => req('/auth/login', { method: 'POST', body: b, quiet: true }),
+    requestPasswordReset: (email) => req('/auth/password-reset/request', { method: 'POST', body: { email }, quiet: true }),
+    resetPassword: (token, password) => req('/auth/password-reset/confirm', { method: 'POST', body: { token, password }, quiet: true }),
     me: () => req('/auth/me', { quiet: true }),
     listForms: () => req('/forms'),
     getForm: (id) => req(`/forms/${id}`),
@@ -61,6 +63,43 @@ export const api = {
     duplicate: (id) => req(`/forms/${id}/duplicate`, { method: 'POST' }),
     removeForm: (id) => req(`/forms/${id}`, { method: 'DELETE' }),
     getPublicForm: (id) => req(`/public/forms/${id}`, { quiet: true }),
+    uploadFile: async (formId, fieldId, file) => {
+        const data = new FormData();
+        data.append('file', file);
+        let res;
+        try {
+            const t = token.get();
+            res = await fetch(`/api/public/forms/${encodeURIComponent(formId)}/uploads/${encodeURIComponent(fieldId)}`, {
+                method: 'POST', headers: t ? { Authorization: `Bearer ${t}` } : {}, body: data,
+            });
+        }
+        catch {
+            throw new ApiError(0, 'Cannot reach the server. Check your connection and try again.');
+        }
+        const body = await res.json().catch(() => null);
+        if (!res.ok)
+            throw new ApiError(res.status, body?.error ?? body?.message ?? 'File upload failed', body);
+        return body;
+    },
+    downloadFile: async (formId, fileId) => {
+        const t = token.get();
+        let res;
+        try {
+            res = await fetch(`/api/forms/${encodeURIComponent(formId)}/files/${encodeURIComponent(fileId)}`, {
+                headers: t ? { Authorization: `Bearer ${t}` } : {},
+            });
+        }
+        catch {
+            throw new ApiError(0, 'Cannot reach the server. Check your connection and try again.');
+        }
+        if (!res.ok) {
+            const body = await res.json().catch(() => null);
+            if (res.status === 401 && t)
+                onUnauthorized();
+            throw new ApiError(res.status, body?.error ?? 'File download failed', body);
+        }
+        return res.blob();
+    },
     submitResponse: (id, answers, completionSeconds) => req(`/public/forms/${id}/responses`, { method: 'POST', body: { answers, completionSeconds }, quiet: true }),
     listResponses: (id) => req(`/forms/${id}/responses`),
     deleteResponse: (id, rid) => req(`/forms/${id}/responses/${rid}`, { method: 'DELETE' }),

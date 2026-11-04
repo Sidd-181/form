@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Link, Navigate, useLocation } from 'react-router-dom';
+import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Logo } from '../components/AppLayout';
 import { Button, Input } from '../components/ui';
 import { useAppDispatch, useAppSelector, login, signup } from '../store';
+import { api } from '../services/api';
 const email = z.string().trim().email('Enter a valid email address');
 const loginSchema = z.object({ email, password: z.string().min(1, 'Enter your password') });
 const signupSchema = z.object({ name: z.string().trim().min(1, 'Enter your name'), email, password: z.string().min(8, 'Use at least 8 characters') });
@@ -57,6 +58,74 @@ function AuthForm({ mode }) {
 }
 export const Login = () => <AuthForm mode="login"/>;
 export const Signup = () => <AuthForm mode="signup"/>;
-export const ForgotPassword = () => (<Shell title="Reset your password" subtitle="Password reset by email isn't set up yet." footer={<Link to="/login" className="font-medium text-accent-600">Back to log in</Link>}>
-    <p className="text-sm text-neutral-600">This needs an email service connected to the backend. Until then, create a new account or contact the workspace owner.</p>
-  </Shell>);
+export function ForgotPassword() {
+    const [params] = useSearchParams();
+    const resetToken = params.get('token');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [message, setMessage] = useState(null);
+    const [error, setError] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const requestReset = async e => {
+        e.preventDefault();
+        setError(null);
+        setMessage(null);
+        if (!z.string().trim().email().safeParse(email).success) {
+            setError('Enter a valid email address.');
+            return;
+        }
+        setLoading(true);
+        try {
+            const result = await api.requestPasswordReset(email);
+            setMessage(result.message);
+        }
+        catch (e) {
+            setError(e.message || 'Could not request a reset link. Please try again.');
+        }
+        finally {
+            setLoading(false);
+        }
+    };
+    const submitReset = async e => {
+        e.preventDefault();
+        setError(null);
+        setMessage(null);
+        if (!resetToken) {
+            setError('This password reset link is invalid or has expired.');
+            return;
+        }
+        if (password !== confirmPassword) {
+            setError('Passwords do not match.');
+            return;
+        }
+        setLoading(true);
+        try {
+            const result = await api.resetPassword(resetToken, password);
+            setMessage(result.message);
+        }
+        catch (e) {
+            setError(e.message || 'Could not reset your password. Please try again.');
+        }
+        finally {
+            setLoading(false);
+        }
+    };
+    const finishedReset = !!resetToken && message?.startsWith('Your password has been updated.');
+    return (<Shell title={resetToken ? 'Choose a new password' : 'Reset your password'} subtitle={resetToken ? 'Reset links expire after 30 minutes.' : 'Enter your email and we’ll send a reset link if an account exists.'} footer={<Link to="/login" className="font-medium text-accent-600">Back to log in</Link>}>
+      {message && <p role="status" className="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-800">{message}</p>}
+      {error && <p role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+      {finishedReset ? <Link to="/login"><Button className="w-full">Go to log in</Button></Link> : resetToken ? (
+        <form onSubmit={submitReset} noValidate className="space-y-4">
+          <label className="block space-y-1.5"><span className="text-sm font-medium">New password</span><Input type="password" autoComplete="new-password" minLength={8} maxLength={128} required value={password} onChange={e => setPassword(e.target.value)}/></label>
+          <label className="block space-y-1.5"><span className="text-sm font-medium">Confirm new password</span><Input type="password" autoComplete="new-password" minLength={8} maxLength={128} required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}/></label>
+          <Button type="submit" className="w-full" disabled={loading || password.length < 8 || confirmPassword.length < 8}>{loading ? 'Updating…' : 'Update password'}</Button>
+        </form>
+      ) : (
+        <form onSubmit={requestReset} noValidate className="space-y-4">
+          <label className="block space-y-1.5"><span className="text-sm font-medium">Email</span><Input type="email" autoComplete="email" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)}/></label>
+          <Button type="submit" className="w-full" disabled={loading || !email.trim()}>{loading ? 'Sending…' : 'Send reset link'}</Button>
+        </form>
+      )}
+    </Shell>);
+}

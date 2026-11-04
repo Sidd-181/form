@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Copy, Check, Eye, Inbox, Mail, MessageCircle, Share2, Send } from 'lucide-react';
 import WithForm from '../components/WithForm';
 import { Badge, Button, Dialog, Input } from '../components/ui';
-import { setStatus, updateSettings, useAppDispatch } from '../store';
+import { fetchForm, setStatus, updateSettings, useAppDispatch } from '../store';
 const Card = ({ title, children }) => (<section className="space-y-3 rounded-xl border border-line bg-white p-5"><h2 className="font-medium">{title}</h2>{children}</section>);
 function CopyBox({ label, value, multiline }) {
     const [state, setState] = useState('idle');
@@ -30,7 +30,7 @@ const toLocalInput = (iso) => {
     const d = new Date(iso);
     return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 };
-function Limits({ form }) {
+function Limits({ form, responseCount, responseCountError }) {
     const dispatch = useAppDispatch();
     const [limit, setLimit] = useState(form.submissionLimit ? String(form.submissionLimit) : '');
     const [expires, setExpires] = useState(toLocalInput(form.expiresAt));
@@ -60,13 +60,25 @@ function Limits({ form }) {
         <Button onClick={save}>Save settings</Button>
         {msg && <p role={msg.ok ? 'status' : 'alert'} className={msg.ok ? 'text-sm text-emerald-700' : 'text-sm text-red-600'}>{msg.text}</p>}
       </div>
-      <p className="text-xs text-neutral-500">{form.responseCount ?? 0} responses so far. The form closes automatically when either condition is met.</p>
+      <p className="text-xs text-neutral-500">{responseCount == null ? 'Loading response count…' : `${responseCount} responses so far. The form closes automatically when either condition is met.`}</p>
+      {responseCountError && <p role="alert" className="text-xs text-red-600">{responseCountError}</p>}
     </Card>);
 }
 function ShareView({ form }) {
     const dispatch = useAppDispatch();
     const [confirm, setConfirm] = useState(false);
     const [error, setError] = useState(null);
+    const [responseCount, setResponseCount] = useState(null);
+    const [responseCountError, setResponseCountError] = useState(null);
+    useEffect(() => {
+        let current = true;
+        dispatch(fetchForm(form.id)).unwrap().then(updated => {
+            if (current) setResponseCount(updated.responseCount ?? 0);
+        }).catch(e => {
+            if (current) setResponseCountError(e.message ?? 'Could not load response count.');
+        });
+        return () => { current = false; };
+    }, [dispatch, form.id]);
     const published = form.status === 'published';
     const url = `${window.location.origin}/forms/${form.id}`;
     const embed = `<iframe src="${url}" width="100%" height="720" style="border:0" title="${form.title.replace(/"/g, '&quot;')}"></iframe>`;
@@ -119,7 +131,7 @@ function ShareView({ form }) {
       </Card>
 
       <Card title="Embed on your website"><CopyBox label="Embed code" value={embed} multiline/></Card>
-      <Limits key={form.id} form={form}/>
+      <Limits key={form.id} form={form} responseCount={responseCount} responseCountError={responseCountError}/>
 
       <Dialog open={confirm} onClose={() => setConfirm(false)} title={published ? 'Unpublish form?' : 'Publish form?'}>
         <p>{published ? 'The public link will stop accepting responses. Existing responses are kept.' : 'The form becomes publicly accessible and starts accepting responses.'}</p>
@@ -128,4 +140,4 @@ function ShareView({ form }) {
       </Dialog>
     </div>);
 }
-export default function Share() { return <WithForm>{f => <ShareView form={f}/>}</WithForm>; }
+export default function Share() { return <WithForm>{f => <ShareView key={f.id} form={f}/>}</WithForm>; }

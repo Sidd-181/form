@@ -1,6 +1,6 @@
 import { configureStore, createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { useDispatch, useSelector } from 'react-redux';
-import { api, token, setUnauthorizedHandler } from '../services/api';
+import { api, token, setUnauthorizedHandler } from '../services/api.js';
 const blank = { forms: [], responses: [], load: 'idle' };
 const initialState = { ...blank, auth: { user: null, status: token.get() ? 'checking' : 'anon' } };
 export const loadDashboard = createAsyncThunk('app/load', async () => {
@@ -38,7 +38,15 @@ const upsert = (s, f) => {
 };
 const slice = createSlice({
     name: 'app', initialState,
-    reducers: { signedOut: () => ({ ...blank, auth: { user: null, status: 'anon' } }) },
+    reducers: {
+        signedOut: () => ({ ...blank, auth: { user: null, status: 'anon' } }),
+        responseDeleted: (s, a) => {
+            const form = s.forms.find(f => f.id === a.payload.formId);
+            if (form?.responseCount != null)
+                form.responseCount = Math.max(0, form.responseCount - 1);
+            s.responses = s.responses.filter(r => r.id !== a.payload.responseId);
+        },
+    },
     extraReducers: b => {
         b.addCase(loadDashboard.pending, s => { s.load = 'loading'; s.loadError = undefined; })
             .addCase(loadDashboard.fulfilled, (s, a) => { s.load = 'ready'; s.forms = a.payload.forms; s.responses = a.payload.responses; })
@@ -59,6 +67,7 @@ const slice = createSlice({
     },
 });
 export const store = configureStore({ reducer: slice.reducer });
+export const responseDeleted = slice.actions.responseDeleted;
 export const logout = () => { token.clear(); return slice.actions.signedOut(); };
 setUnauthorizedHandler(() => { store.dispatch(logout()); });
 export const useAppDispatch = () => useDispatch();

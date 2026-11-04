@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api } from './api';
+import { api } from './api.js';
+import { responseDeleted, useAppDispatch } from '../store/index.js';
 export function useResponses(formId) {
+    const dispatch = useAppDispatch();
     const [state, setState] = useState({ data: null, error: null });
     const [tick, setTick] = useState(0);
     useEffect(() => {
@@ -12,10 +14,31 @@ export function useResponses(formId) {
     const remove = async (rid) => {
         await api.deleteResponse(formId, rid);
         setState(s => ({ ...s, data: s.data?.filter(r => r.id !== rid) ?? null }));
+        dispatch(responseDeleted({ formId, responseId: rid }));
     };
     return { ...state, reload, remove };
 }
-export const fmtAnswer = (a) => Array.isArray(a) ? a.join(', ') : typeof a === 'boolean' ? (a ? 'Yes' : 'No') : a == null ? '' : String(a);
+export const fmtAnswer = (a) => Array.isArray(a) ? a.join(', ') : typeof a === 'boolean' ? (a ? 'Yes' : 'No') : a && typeof a === 'object' && 'fileId' in a ? String(a.name ?? 'Uploaded file') : a == null ? '' : String(a);
+export const responseFieldKey = field => `${field.id}\u0000${field.label}\u0000${field.type}`;
+export function fieldsForResponse(response, fallbackFields) {
+    return Array.isArray(response.fieldSnapshots) && response.fieldSnapshots.length ? response.fieldSnapshots : fallbackFields;
+}
+export function responseFieldColumns(responses, fallbackFields) {
+    const columns = new Map(fallbackFields.map(field => [responseFieldKey(field), field]));
+    for (const response of responses) {
+        for (const field of fieldsForResponse(response, fallbackFields)) {
+            const key = responseFieldKey(field);
+            if (!columns.has(key)) columns.set(key, field);
+        }
+    }
+    return [...columns.values()];
+}
+export function answerForResponseField(response, field, fallbackFields) {
+    const fields = fieldsForResponse(response, fallbackFields);
+    return fields.some(snapshot => responseFieldKey(snapshot) === responseFieldKey(field))
+        ? fmtAnswer(response.answers[field.id])
+        : '';
+}
 // Inclusive local-date range check; `from`/`to` are yyyy-mm-dd strings from date inputs.
 export function inRange(iso, from, to) {
     const t = new Date(iso).getTime();

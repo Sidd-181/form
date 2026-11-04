@@ -4,9 +4,37 @@ import { Download, Eye, Search, Trash2 } from 'lucide-react';
 import WithForm from '../components/WithForm';
 import FormTabs from '../components/FormTabs';
 import { Button, Dialog, Input } from '../components/ui';
-import { downloadCsv, fmtAnswer, inRange, toCsv, useResponses } from '../services/responses';
+import { answerForResponseField, downloadCsv, fieldsForResponse, fmtAnswer, inRange, responseFieldColumns, responseFieldKey, toCsv, useResponses } from '../services/responses';
+import { api } from '../services/api';
 const PAGE = 25;
 const when = (iso) => new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+function FileDownload({ formId, file }) {
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const download = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const blob = await api.downloadFile(formId, file.fileId);
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = file.name;
+            link.click();
+            window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+        catch (e) {
+            setError(e.message || 'Could not download file.');
+        }
+        finally {
+            setLoading(false);
+        }
+    };
+    return <span className="inline-flex flex-col items-start gap-1">
+      <Button size="sm" variant="secondary" onClick={download} disabled={loading}>{loading ? 'Downloading…' : `Download ${file.name}`}</Button>
+      {error && <span role="alert" className="text-xs text-red-600">{error}</span>}
+    </span>;
+}
 function ResponsesView({ form }) {
     const { data, error, reload, remove } = useResponses(form.id);
     const [q, setQ] = useState('');
@@ -19,10 +47,11 @@ function ResponsesView({ form }) {
         const needle = q.trim().toLowerCase();
         return (data ?? []).filter(r => inRange(r.submittedAt, from, to) && (!needle || Object.values(r.answers).some(a => fmtAnswer(a).toLowerCase().includes(needle))));
     }, [data, q, from, to]);
-    const cols = form.fields.slice(0, 4);
+    const allColumns = responseFieldColumns(rows, form.fields);
+    const cols = allColumns.slice(0, 4);
     const exportCsv = () => {
-        const head = ['Submitted at', ...form.fields.map(f => f.label), 'Completion time (s)'];
-        const body = rows.map(r => [new Date(r.submittedAt).toISOString(), ...form.fields.map(f => fmtAnswer(r.answers[f.id])), r.completionSeconds != null ? String(r.completionSeconds) : '']);
+        const head = ['Submitted at', ...allColumns.map(f => f.label), 'Completion time (s)'];
+        const body = rows.map(r => [new Date(r.submittedAt).toISOString(), ...allColumns.map(f => answerForResponseField(r, f, form.fields)), r.completionSeconds != null ? String(r.completionSeconds) : '']);
         downloadCsv(`${(form.title || 'form').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-responses.csv`, toCsv([head, ...body]));
     };
     const confirmDelete = async () => {
@@ -64,12 +93,12 @@ function ResponsesView({ form }) {
             </div>) : rows.length === 0 ? (<div className="rounded-xl border border-dashed border-line bg-white p-10 text-center"><p className="font-medium">No responses match your filters</p></div>) : (<div className="overflow-x-auto rounded-xl border border-line bg-white">
               <table className="w-full min-w-[640px] text-left text-sm">
                 <thead className="border-b border-line bg-neutral-50 text-xs text-neutral-500">
-                  <tr><th className="px-4 py-3 font-medium">Submitted</th>{cols.map(c => <th key={c.id} className="px-4 py-3 font-medium">{c.label}</th>)}<th className="px-4 py-3"><span className="sr-only">Actions</span></th></tr>
+                  <tr><th className="px-4 py-3 font-medium">Submitted</th>{cols.map(c => <th key={responseFieldKey(c)} className="px-4 py-3 font-medium">{c.label}</th>)}<th className="px-4 py-3"><span className="sr-only">Actions</span></th></tr>
                 </thead>
                 <tbody className="divide-y divide-line">
                   {rows.slice(0, shown).map(r => (<tr key={r.id}>
                       <td className="whitespace-nowrap px-4 py-3 text-neutral-600">{when(r.submittedAt)}</td>
-                      {cols.map(c => <td key={c.id} className="max-w-[220px] truncate px-4 py-3">{fmtAnswer(r.answers[c.id]) || <span className="text-neutral-400">–</span>}</td>)}
+                      {cols.map(c => <td key={responseFieldKey(c)} className="max-w-[220px] truncate px-4 py-3">{answerForResponseField(r, c, form.fields) || <span className="text-neutral-400">–</span>}</td>)}
                       <td className="whitespace-nowrap px-4 py-2 text-right">
                         <button aria-label="View response" title="View" onClick={() => setOpen(r)} className="mr-1 inline-grid h-8 w-8 place-items-center rounded-md text-neutral-500 hover:bg-neutral-100"><Eye size={16}/></button>
                         <button aria-label="Delete response" title="Delete" onClick={() => setDel({ r })} className="inline-grid h-8 w-8 place-items-center rounded-md text-red-500 hover:bg-red-50"><Trash2 size={16}/></button>
@@ -88,7 +117,11 @@ function ResponsesView({ form }) {
         {open && (<>
             <p className="text-xs text-neutral-500">Submitted {when(open.submittedAt)}{open.completionSeconds != null && ` · completed in ${open.completionSeconds}s`}</p>
             <dl className="mt-4 space-y-4">
-              {form.fields.map(f => (<div key={f.id}><dt className="text-xs font-medium text-neutral-500">{f.label}</dt><dd className="mt-0.5 whitespace-pre-wrap break-words text-sm text-ink">{fmtAnswer(open.answers[f.id]) || <span className="text-neutral-400">No answer</span>}</dd></div>))}
+              {fieldsForResponse(open, form.fields).map(f => (<div key={responseFieldKey(f)}><dt className="text-xs font-medium text-neutral-500">{f.label}</dt><dd className="mt-0.5 whitespace-pre-wrap break-words text-sm text-ink">
+                {open.answers[f.id] && typeof open.answers[f.id] === 'object' && 'fileId' in open.answers[f.id]
+                    ? <FileDownload formId={form.id} file={open.answers[f.id]}/>
+                    : fmtAnswer(open.answers[f.id]) || <span className="text-neutral-400">No answer</span>}
+              </dd></div>))}
             </dl>
             <div className="mt-6 flex justify-between">
               <Button variant="danger" size="sm" onClick={() => setDel({ r: open })}><Trash2 size={14}/>Delete</Button>

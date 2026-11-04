@@ -1,5 +1,5 @@
-import { newField } from './fieldTypes';
-import { uid } from './uid';
+import { newField } from './fieldTypes.js';
+import { uid } from './uid.js';
 export const CATEGORIES = ['Customer Feedback', 'Event Registration', 'Contact Form', 'Job Application', 'Survey', 'Product Feedback'];
 export const TEMPLATES = [
     { id: 't-csat', category: 'Customer Feedback', title: 'Customer satisfaction', description: 'Measure how happy customers are after a purchase or support chat.',
