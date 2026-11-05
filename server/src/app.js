@@ -42,6 +42,7 @@ app.use("/api", async (_req, res, next) => {
             error: "Server configuration error",
             details: configurationError
         });
+        return;
     }
 
     try {
