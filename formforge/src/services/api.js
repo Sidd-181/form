@@ -1,3 +1,17 @@
+const configuredApiBase = import.meta.env?.VITE_API_BASE_URL?.trim() || '/api';
+const trimmedApiBase = configuredApiBase.replace(/\/+$/, '');
+const API_BASE_URL = trimmedApiBase === '/api' || trimmedApiBase.endsWith('/api')
+    ? trimmedApiBase
+    : `${trimmedApiBase}/api`;
+const apiUrl = path => `${API_BASE_URL}${path}`;
+function httpErrorMessage(status, responseMessage, fallback) {
+    if (status === 502 || status === 503 || status === 504)
+        return `The API server is unavailable (HTTP ${status}). Check that the backend is running and connected to MongoDB.`;
+    if (status === 404)
+        return 'The API endpoint was not found (HTTP 404). Check that VITE_API_BASE_URL points to your backend.';
+    return responseMessage ?? `${fallback} (HTTP ${status})`;
+}
+
 const KEY = 'ff.token';
 export const token = {
     get: () => { try {
@@ -30,7 +44,7 @@ async function req(path, o = {}) {
     const t = token.get();
     let res;
     try {
-        res = await fetch(`/api${path}`, {
+        res = await fetch(apiUrl(path), {
             method: o.method ?? 'GET',
             headers: { ...(o.body ? { 'Content-Type': 'application/json' } : {}), ...(t ? { Authorization: `Bearer ${t}` } : {}) },
             body: o.body ? JSON.stringify(o.body) : undefined,
@@ -45,7 +59,7 @@ async function req(path, o = {}) {
     if (!res.ok) {
         if (res.status === 401 && t && !o.quiet)
             onUnauthorized();
-        throw new ApiError(res.status, data?.error ?? data?.message ?? 'Request failed', data);
+        throw new ApiError(res.status, httpErrorMessage(res.status, data?.error ?? data?.message, 'Request failed'), data);
     }
     return data;
 }
@@ -69,7 +83,7 @@ export const api = {
         let res;
         try {
             const t = token.get();
-            res = await fetch(`/api/public/forms/${encodeURIComponent(formId)}/uploads/${encodeURIComponent(fieldId)}`, {
+            res = await fetch(apiUrl(`/public/forms/${encodeURIComponent(formId)}/uploads/${encodeURIComponent(fieldId)}`), {
                 method: 'POST', headers: t ? { Authorization: `Bearer ${t}` } : {}, body: data,
             });
         }
@@ -78,14 +92,14 @@ export const api = {
         }
         const body = await res.json().catch(() => null);
         if (!res.ok)
-            throw new ApiError(res.status, body?.error ?? body?.message ?? 'File upload failed', body);
+            throw new ApiError(res.status, httpErrorMessage(res.status, body?.error ?? body?.message, 'File upload failed'), body);
         return body;
     },
     downloadFile: async (formId, fileId) => {
         const t = token.get();
         let res;
         try {
-            res = await fetch(`/api/forms/${encodeURIComponent(formId)}/files/${encodeURIComponent(fileId)}`, {
+            res = await fetch(apiUrl(`/forms/${encodeURIComponent(formId)}/files/${encodeURIComponent(fileId)}`), {
                 headers: t ? { Authorization: `Bearer ${t}` } : {},
             });
         }
@@ -96,7 +110,7 @@ export const api = {
             const body = await res.json().catch(() => null);
             if (res.status === 401 && t)
                 onUnauthorized();
-            throw new ApiError(res.status, body?.error ?? 'File download failed', body);
+            throw new ApiError(res.status, httpErrorMessage(res.status, body?.error, 'File download failed'), body);
         }
         return res.blob();
     },

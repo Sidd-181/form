@@ -1,4 +1,5 @@
 const KEY = 'ff.theme';
+export const THEME_CHANGE_EVENT = 'ff:theme-change';
 const media = () => window.matchMedia('(prefers-color-scheme: dark)');
 export const getTheme = () => {
     try {
@@ -18,9 +19,14 @@ export function setTheme(t) {
     }
     catch { /* storage blocked */ }
     applyTheme(t);
+    window.dispatchEvent(new Event(THEME_CHANGE_EVENT));
 }
 export function initTheme() {
     applyTheme(getTheme());
-    media().addEventListener('change', () => { if (getTheme() === 'system')
-        applyTheme('system'); });
+    media().addEventListener('change', () => {
+        if (getTheme() === 'system') {
+            applyTheme('system');
+            window.dispatchEvent(new Event(THEME_CHANGE_EVENT));
+        }
+    });
 }

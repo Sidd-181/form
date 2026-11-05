@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet, Link } from 'react-router-dom';
-import { LayoutDashboard, LayoutTemplate, Settings, Menu, X, Plus, LogOut } from 'lucide-react';
+import { LayoutDashboard, LayoutTemplate, Settings, Menu, X, Plus, LogOut, Moon, Sun } from 'lucide-react';
 import { useAppDispatch, useAppSelector, logout } from '../store';
 import { cn, Button } from './ui';
+import { setTheme, THEME_CHANGE_EVENT } from '../services/theme';
 const nav = [
     { to: '/app', label: 'Dashboard', icon: LayoutDashboard, end: true },
     { to: '/app/forms/new', label: 'Templates', icon: LayoutTemplate, end: false },
@@ -12,6 +13,18 @@ export function Logo() {
     return (<Link to="/" className="flex items-center gap-2 font-semibold tracking-tight">
       <span className="grid h-7 w-7 place-items-center rounded-lg bg-ink text-sm text-white">F</span>FormForge
     </Link>);
+}
+function ThemeToggle() {
+    const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
+    useEffect(() => {
+        const syncTheme = () => setDark(document.documentElement.classList.contains('dark'));
+        window.addEventListener(THEME_CHANGE_EVENT, syncTheme);
+        return () => window.removeEventListener(THEME_CHANGE_EVENT, syncTheme);
+    }, []);
+    const label = dark ? 'Switch to light mode' : 'Switch to dark mode';
+    return <button type="button" aria-label={label} title={label} aria-pressed={dark} onClick={() => setTheme(dark ? 'light' : 'dark')} className="grid h-9 w-9 place-items-center rounded-full bg-neutral-100 text-neutral-700 hover:bg-neutral-200 focus-visible:outline-2 focus-visible:outline-accent-500">
+      {dark ? <Moon size={18} aria-hidden="true"/> : <Sun size={18} aria-hidden="true"/>}
+    </button>;
 }
 export default function AppLayout() {
     const [open, setOpen] = useState(false);
@@ -42,6 +55,7 @@ export default function AppLayout() {
           <button className="lg:hidden" aria-label="Open menu" onClick={() => setOpen(true)}><Menu size={20}/></button>
           <span className="hidden text-sm text-neutral-500 lg:block">{workspace}</span>
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <Link to="/app/forms/new"><Button size="sm"><Plus size={16}/>New form</Button></Link>
             <span title={user?.email} className="grid h-8 w-8 place-items-center rounded-full bg-accent-100 text-xs font-semibold text-accent-700">{initials}</span>
             <button aria-label="Log out" title="Log out" onClick={() => dispatch(logout())} className="grid h-8 w-8 place-items-center rounded-md text-neutral-500 hover:bg-neutral-100"><LogOut size={16}/></button>

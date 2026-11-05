@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, Building2, FileText, Lock, Palette, User as UserIcon, Monitor, Moon, Sun } from 'lucide-react';
 import { changeEmail, changePassword, deleteAccount, logout, saveProfile, useAppDispatch, useAppSelector } from '../store';
 import { Button, Dialog, Input, Toggle, cn } from '../components/ui';
 import { SWATCHES } from './EditorPanels';
-import { getTheme, setTheme } from '../services/theme';
+import { getTheme, setTheme, THEME_CHANGE_EVENT } from '../services/theme';
 function useAction() {
     const [msg, setMsg] = useState(null);
     const [busy, setBusy] = useState(false);
@@ -108,6 +108,11 @@ function Notifications() {
 }
 function Appearance() {
     const [theme, set] = useState(getTheme);
+    useEffect(() => {
+        const syncTheme = () => set(getTheme());
+        window.addEventListener(THEME_CHANGE_EVENT, syncTheme);
+        return () => window.removeEventListener(THEME_CHANGE_EVENT, syncTheme);
+    }, []);
     const opts = [['light', 'Light', Sun], ['dark', 'Dark', Moon], ['system', 'System', Monitor]];
     return (<Section title="Appearance" desc="Applies to this browser only.">
       <div className="grid gap-3 sm:grid-cols-3" role="radiogroup" aria-label="Theme">

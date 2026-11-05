@@ -1,6 +1,6 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
-import AppLayout from './components/AppLayout.js';
+import AppLayout from './components/AppLayout.jsx';
 import RequireAuth from './components/RequireAuth.js';
 import Dashboard from './pages/Dashboard.js';
 import CreateForm from './pages/CreateForm.js';
