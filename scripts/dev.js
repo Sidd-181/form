@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const children = [
-  spawn(process.execPath, ['src/index.js'], {
+  spawn(process.execPath, ['src/dev.js'], {
     cwd: resolve(projectRoot, 'server'),
     stdio: 'inherit',
   }),
