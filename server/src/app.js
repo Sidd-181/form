@@ -38,8 +38,10 @@ app.use("/api", async (_req, res, next) => {
     const configurationError = getConfigurationError();
     if (configurationError) {
         console.error(`Invalid server configuration: ${configurationError}`);
-        res.status(500).json({ error: "Server configuration error" });
-        return;
+        res.status(500).json({
+            error: "Server configuration error",
+            details: configurationError
+        });
     }
 
     try {
